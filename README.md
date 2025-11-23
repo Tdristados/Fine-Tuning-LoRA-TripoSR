@@ -8,8 +8,8 @@
 
 ## 📌 Descripción
 
-Este proyecto desarrolla un **Fine-Tuning con LoRA sobre el modelo TripoSR** para mejorar la reconstrucción 3D a partir de imágenes específicas del dataset utilizado.  
-El objetivo fue **especializar el modelo en ciertas formas, texturas o configuraciones**, obteniendo mejores *scene codes* y posteriormente mallas `.obj` adaptadas al dominio del proyecto.
+Este proyecto desarrolla un Fine-Tuning con LoRA sobre el modelo TripoSR para mejorar la reconstrucción 3D a partir de imágenes específicas.  
+Para el entrenamiento se utilizó una pequeña parte, equivalente a 1000 archivos ```.obj``` del gran conjunto de datos: **ABC Dataset** (https://deep-geometry.github.io/abc-dataset/), del cual se extrajeron las muestras empleadas en las pruebas y en el ajuste del modelo. Los pesos logrados fueron alojados en la carpeta ```wrights_lora/```.
 
 ### ¿Qué se modificó exactamente con LoRA?
 
@@ -172,6 +172,53 @@ Archivo: **fine_tuning.py**
 python fine_tuning.py     --input_folder ruta/a/imagenes/     --output_dir outputs_lora/     --batch_size 1     --lr 1e-4     --epochs 100     --r 16     --alpha 16     --dropout 0.05
 ```
 
+
+### Sobre el funcionamiento de los demás scripts del proyecto
+
+**generate_mesh_triposr.py** genera las mallas que se usarán para evaluar (o comparar) el modelo base y el modelo fine-tuneado con LoRA. Se ejecuta de la siguiente forma:
+
+```bash
+# Modelo base
+python generate_mesh_triposr.py \
+  --images_dir ./images \
+  --output_dir outputs/base_meshes \
+  --pretrained_name_or_path . \
+  --config_name config.yaml \
+  --weight_name model.ckpt \
+  --model_type base
+
+# Modelo con LoRA
+python generate_mesh_triposr.py \
+  --images_dir ./images \
+  --output_dir outputs/lora_meshes \
+  --pretrained_name_or_path . \
+  --config_name config.yaml \
+  --weight_name model.ckpt \
+  --model_type lora \
+  --lora_weights weights_lora/lora_weights.pth
+```
+---
+**data_processing.py** procesa las mallas ```.obj``` y genera las imágenes multivista, máscaras, depth y parámetros de cámara para el Fine-Tuning. Se ejecuta de la siguiente forma:
+```bash
+python data_processing.py \
+  --objs_dir ./obj \
+  --output_root ./dataFT \
+  --img_size 512 \
+  --yfov 50
+```
+---
+
+**metricas.py** calcula las métricas (Chamfer Distance y F-Score) para comparar el modelo base vs LoRA.
+Se ejecuta así:
+
+```bash
+python metricas_triposr.py \
+  --gt_dir ./meshes_gt \
+  --base_dir outputs/base_meshes \
+  --lora_dir outputs/lora_meshes
+```
+---
+
 ### Parámetros importantes:
 
 | Parámetro | Significado |
@@ -200,7 +247,7 @@ Archivo: **inference_lora.py**
 ### Ejecución:
 
 ```bash
-python inference_lora.py     --image_path examples/chair.png     --lora_path outputs_lora/lora_weights.pth     --repo_root .
+python inference_lora.py     --image_path <ruta de la imagen> --lora_path weights_lora/lora_weights.pth     --repo_root .
 ```
 
 ### ¿Qué hace el script?
